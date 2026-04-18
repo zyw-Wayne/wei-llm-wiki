@@ -1,36 +1,134 @@
 # wei-llm-wiki
 
-基于 [Karpathy LLM Wiki 方法论](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)的 Claude Code Skill —— 将**任意来源的文章**预编译为持久、可查询的结构化知识库。
+**[English](#english) | [中文](#中文)**
 
-> RAG 每次查询都从原文重新推导知识。LLM Wiki 不同 —— LLM **预先**把文章读完、理解完、整合进结构化 wiki，查询时读的是已编译的笔记，不是原文。每篇新文章入库都让整个 wiki 更丰富；每个好答案存回 wiki 都成为新的知识节点。**知识复利积累，不是每次重新推导。**
+---
 
-## 安装
+<a name="english"></a>
+
+## LLM Wiki — Compile Articles into a Structured Knowledge Base
+
+A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) Skill based on [Karpathy's LLM Wiki methodology](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f). Instead of re-deriving knowledge from raw text every time (like RAG), LLM Wiki **pre-compiles** articles into structured, queryable wiki pages. Every new article makes the whole wiki richer. Every good answer gets saved back as a new knowledge node. **Compound knowledge, not repeated inference.**
+
+### Install
 
 ```bash
 npx skills add https://github.com/zyw-Wayne/wei-llm-wiki
 ```
 
-## 快速开始
+### Quick Start
 
 ```bash
-# 1. 指定知识库根目录（持久化，后续操作自动使用）
-wiki init ~/my-wiki
-
-# 2. 摄入一篇文章
-wiki ingest https://mp.weixin.qq.com/s/xxxxx
-
-# 3. 查询知识库
-wiki query "这篇文章的核心观点是什么？"
+wiki init ~/my-wiki                              # Set wiki root (persisted)
+wiki ingest https://example.com/article           # Ingest an article
+wiki query "What are the key takeaways?"          # Query the knowledge base
 ```
 
-## 多来源摄入
+### Multi-Source Ingestion
 
-一个 `wiki ingest` 命令，自动识别来源类型并分派获取方式：
+One command, auto-detects source type:
+
+| Source | Example | Method |
+|--------|---------|--------|
+| WeChat Articles | `https://mp.weixin.qq.com/s/...` | `wechat-article-down` skill |
+| GitHub Doc Repos | `https://github.com/owner/repo` | GitHub MCP scan + batch read |
+| Web Pages | `https://blog.example.com/...` | chrome-devtools extraction + local images |
+| Local Files | `~/notes/research.md` | Direct read (md/html/txt) |
+
+```bash
+# Mixed sources in one command
+wiki ingest https://mp.weixin.qq.com/s/aaa ~/notes/b.md https://blog.example.com/c
+```
+
+### 8 Operations
+
+| Command | Description |
+|---------|-------------|
+| `wiki init <path>` | Initialize wiki root, deploy knowledge graph HTML |
+| `wiki ingest <source>` | Fetch article → store in `raw/` → compile into `wiki/` pages |
+| `wiki query "question"` | Search wiki index → synthesize structured answer → auto-save insights |
+| `wiki evolve [category]` | Audit knowledge coverage, track maturity with evolution vectors (🔴→🟡→🟢) |
+| `wiki lint` | Health check: contradictions, stale content, orphan pages, missing cross-refs |
+| `wiki graph` | Deploy interactive knowledge graph visualization (force-directed, themed, searchable) |
+| `wiki refresh` | Regenerate WIKI.md metadata from actual wiki state |
+| `wiki log` / `wiki list` | Aggregated operation log / one-screen knowledge overview |
+
+### Knowledge Evolution
+
+Not just storage — **active gap detection**.
+
+```bash
+wiki evolve agent         # Audit "Agent Development" category
+wiki evolve               # Update all previously evaluated categories
+wiki evolve --all         # Full evaluation of all categories
+```
+
+**5-dimensional assessment**: Breadth · Depth · Practicality · Timeliness · Cross-references
+
+**Evolution vectors** track each knowledge direction: 🔴 Blank → 🟡 Basic coverage → 🟢 Mature, with specific search leads and suggestions.
+
+**Passive evolution**: During `wiki query`, if knowledge gaps or factual contradictions are discovered, evolution profiles update automatically.
+
+### Directory Structure
+
+```
+<wiki-root>/
+├── raw/                      # Original articles (read-only)
+│   └── <title>/
+│       ├── article.md
+│       └── images/           # Downloaded images from web articles
+├── wiki/                     # LLM-compiled knowledge pages
+│   ├── index.md              # Content directory (query entry point)
+│   ├── log.md                # Operation log (append-only)
+│   └── *.md                  # Concept / topic / query archive pages
+├── evolve/                   # Knowledge evolution tracking
+│   ├── index.md              # Dashboard: all category scores
+│   └── <category>.md         # Per-topic evolution profile
+├── knowledge-graph.html      # Interactive knowledge graph visualization
+└── WIKI.md                   # Wiki schema
+```
+
+### Multi-Wiki Support
+
+**Collection mode**: One parent directory manages multiple independent topic wikis. Auto-detects sub-wikis, generates a `collection` registry. Select target wiki interactively or specify path directly.
+
+### Design Principles
+
+- **Clear division**: You curate sources and ask questions; LLM handles all maintenance — summaries, cross-references, archival, updates, contradiction detection
+- **Compound knowledge**: Good query answers are saved back to wiki as reusable knowledge nodes
+- **Preserve contradictions**: Marked with `> ⚠️ Contradiction:`, never forcefully unified
+- **Smart routing**: Auto-detects wiki-root (persisted config → current dir → subdirectory scan → ask user)
+
+---
+
+<a name="中文"></a>
+
+## LLM Wiki — 将文章编译为结构化知识库
+
+基于 [Karpathy LLM Wiki 方法论](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)的 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 技能。不同于 RAG 每次从原文重新推导知识，LLM Wiki **预编译**文章为结构化、可查询的 wiki 页面。每篇新文章让整个 wiki 更丰富，每个好答案存回 wiki 成为新的知识节点。**知识复利积累，不是每次重新推导。**
+
+### 安装
+
+```bash
+npx skills add https://github.com/zyw-Wayne/wei-llm-wiki
+```
+
+### 快速开始
+
+```bash
+wiki init ~/my-wiki                              # 指定知识库根目录（持久化）
+wiki ingest https://mp.weixin.qq.com/s/xxxxx      # 摄入一篇文章
+wiki query "这篇文章的核心观点是什么？"              # 查询知识库
+```
+
+### 多来源摄入
+
+一个命令，自动识别来源类型并分派获取方式：
 
 | 来源类型 | 示例 | 获取方式 |
 |---------|------|---------|
 | 微信公众号 | `https://mp.weixin.qq.com/s/...` | 调用 `wechat-article-down` 技能下载 |
-| GitHub 文档仓库 | `https://github.com/owner/repo` | GitHub MCP 扫描 + 批量读取，整仓库合并为一篇 |
+| GitHub 文档仓库 | `https://github.com/owner/repo` | GitHub MCP 扫描 + 批量读取，整仓库合并 |
 | 普通网页 | `https://blog.example.com/...` | chrome-devtools 抓取正文 + 图片本地化 |
 | 本地文件 | `~/notes/research.md` | 直接读取（支持 md/html/txt） |
 
@@ -39,80 +137,36 @@ wiki query "这篇文章的核心观点是什么？"
 wiki ingest https://mp.weixin.qq.com/s/aaa ~/notes/b.md https://blog.example.com/c
 ```
 
-### GitHub 仓库摄入
+### 八大操作
 
-专为**文档型仓库**（书籍、教程、知识库）设计。自动扫描仓库结构，判断是否为文档型，展示文件预览供确认，按目录结构合并为单篇文章后编译入库。支持指定分支：
+| 命令 | 功能 |
+|------|------|
+| `wiki init <路径>` | 初始化知识库根目录，部署知识图谱 HTML |
+| `wiki ingest <来源>` | 获取文章 → 存入 `raw/` → 编译为 `wiki/` 知识页面 |
+| `wiki query "问题"` | 检索 wiki 索引 → 综合结构化回答 → 自动存档有价值的洞察 |
+| `wiki evolve [分类]` | 覆盖度审计，用进化向量追踪知识成熟度（🔴→🟡→🟢） |
+| `wiki lint` | 健康检查：矛盾、过时内容、孤儿页面、缺失交叉引用 |
+| `wiki graph` | 部署交互式知识图谱可视化（力导向图、分类着色、搜索过滤） |
+| `wiki refresh` | 根据实际状态重新生成 WIKI.md 元信息 |
+| `wiki log` / `wiki list` | 聚合操作日志 / 一屏知识概览 |
 
-```bash
-wiki ingest https://github.com/owner/repo/tree/dev
-```
+### 知识进化
 
-## 八大操作
-
-### `wiki init` — 初始化
-
-指定知识库根目录并持久化到 `config.json`。自动创建目录结构（`raw/`、`wiki/`、`evolve/`），生成 `WIKI.md` schema，部署交互式知识图谱 HTML。
-
-### `wiki ingest` — 摄入编译
-
-获取文章 → 存入 `raw/` → 提取核心概念/观点/实体 → 生成或更新 `wiki/` 页面 → 更新索引和日志。在线文章的图片会自动下载到本地。
-
-### `wiki query` — 知识查询
-
-先读 `wiki/index.md` 定位相关页面，综合给出结构化答案（对比表、分析页、时间线等）。有洞察价值的回答自动存为 `query-*.md` 知识页面。
-
-**被动进化**：查询过程中若发现知识盲区或事实矛盾，自动更新进化档案并提示。
-
-### `wiki evolve` — 进化追踪
-
-知识库不只是"存文章"——它会**主动识别知识缺口**。
+不只是"存文章"——**主动识别知识缺口**。
 
 ```bash
 wiki evolve agent         # 审计「Agent 开发」分类的覆盖度
 wiki evolve               # 更新所有已评估分类
-wiki evolve --all         # 全量评估所有分类（含未评估的）
+wiki evolve --all         # 全量评估所有分类
 ```
 
-**五维评估体系**：广度、深度、实用性、时效性、交叉引用
+**五维评估体系**：广度 · 深度 · 实用性 · 时效性 · 交叉引用
 
 **进化向量**追踪每个知识方向的成熟度：🔴 空白 → 🟡 有基础覆盖 → 🟢 成熟，并给出具体的搜索线索和补充建议。
 
-### `wiki lint` — 健康检查
+**被动进化**：`wiki query` 过程中若发现知识盲区或事实矛盾，自动更新进化档案并提示。
 
-检测矛盾表述、过时内容、孤儿页面、概念缺页、缺失交叉引用、超大页面、数据空白，输出健康报告。
-
-### `wiki graph` — 知识图谱
-
-部署交互式知识图谱可视化 HTML。浏览器打开后自动解析分类结构和 `[[wikilink]]` 关系，支持力导向图布局、分类着色、搜索过滤、明暗主题切换。
-
-### `wiki refresh` — 刷新元信息
-
-扫描知识库实际状态，重新生成 `WIKI.md` 中的统计概览（文章数、页面数、分类分布、最近活动）。
-
-### `wiki log` / `wiki list` — 日志与概览
-
-```bash
-wiki log    # 聚合操作日志，按日期分组，底部统计汇总
-wiki list   # 一屏可读的知识库全貌概览
-```
-
-`wiki list` 输出示例：
-
-```
-📚 知识库概览
-   21 篇文章 → 23 个知识页面 | 3 个分类 | 最近更新: 2026-04-14
-
-┌─ 知识管理（3 页）
-│  LLM-Wiki · LLM-Wiki-核心思想 · RAG-vs-LLM-Wiki
-│
-├─ Agent 开发（14 页）
-│  Harness-Engineering · Context-Engineering · 代码执行范式
-│
-└─ Prompt 工程（6 页）
-   Prompt语言选择 · 横纵分析法 · Chain-of-Thought
-```
-
-## 目录结构
+### 目录结构
 
 ```
 <wiki-root>/
@@ -131,18 +185,20 @@ wiki list   # 一屏可读的知识库全貌概览
 └── WIKI.md                   # 知识库 schema
 ```
 
-## 多知识库支持
+### 多知识库支持
 
-支持 **Collection 模式**：一个父目录管理多个独立的主题知识库。自动检测子目录中的知识库，生成 `collection` 类型的 `WIKI.md` 注册表。操作时自动列出子知识库供选择，也可直接指定路径跳过。
+**Collection 模式**：一个父目录管理多个独立的主题知识库。自动检测子目录中的知识库，生成 `collection` 类型的注册表。操作时自动列出供选择，也可直接指定路径。
 
-## 核心设计
+### 核心设计
 
-- **分工明确**：用户负责筛选文章来源、提问、判断方向；LLM 负责所有维护 —— 摘要、交叉引用、归档、更新、检查矛盾
-- **知识复利**：好的查询答案存回 wiki，成为新的知识节点，供后续查询直接复用
-- **矛盾保留**：发现矛盾用 `> ⚠️ 矛盾：` 标注，不强行统一，保留认知张力
-- **被动进化**：查询过程中自动发现知识盲区，无需手动审计
+- **分工明确**：用户筛选来源、提问、判断方向；LLM 负责摘要、交叉引用、归档、更新、检查矛盾
+- **知识复利**：好的查询答案存回 wiki，成为可复用的知识节点
+- **矛盾保留**：用 `> ⚠️ 矛盾：` 标注，不强行统一，保留认知张力
+- **被动进化**：查询中自动发现盲区，无需手动审计
 - **智能路由**：自动检测 wiki-root（持久化配置 → 当前目录 → 子目录扫描 → 询问用户）
 
-## 许可
+---
+
+## License
 
 MIT
