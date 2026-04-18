@@ -4,6 +4,12 @@
 
 > **Live Example / 实际案例**: [llm-wiki-kb](https://github.com/zyw-Wayne/llm-wiki-kb) — A real knowledge base built with this skill, covering AI coding tools, Agent development, Prompt engineering and more.
 
+<p align="center">
+  <img src="assets/knowledge-graph-preview.png" alt="Knowledge Graph Preview / 知识图谱预览" width="900">
+  <br>
+  <em>Interactive Knowledge Graph — 76 nodes · 291 edges · 15 categories / 交互式知识图谱可视化</em>
+</p>
+
 ---
 
 <a name="english"></a>
@@ -51,7 +57,7 @@ wiki ingest https://mp.weixin.qq.com/s/aaa ~/notes/b.md https://blog.example.com
 | `wiki query "question"` | Search wiki index → synthesize structured answer → auto-save insights |
 | `wiki evolve [category]` | Audit knowledge coverage, track maturity with evolution vectors (🔴→🟡→🟢) |
 | `wiki lint` | Health check: contradictions, stale content, orphan pages, missing cross-refs |
-| `wiki graph` | Deploy interactive knowledge graph visualization (force-directed, themed, searchable) |
+| `wiki graph` | Deploy interactive knowledge graph visualization (see preview below) |
 | `wiki refresh` | Regenerate WIKI.md metadata from actual wiki state |
 | `wiki log` / `wiki list` | Aggregated operation log / one-screen knowledge overview |
 
@@ -148,7 +154,7 @@ wiki ingest https://mp.weixin.qq.com/s/aaa ~/notes/b.md https://blog.example.com
 | `wiki query "问题"` | 检索 wiki 索引 → 综合结构化回答 → 自动存档有价值的洞察 |
 | `wiki evolve [分类]` | 覆盖度审计，用进化向量追踪知识成熟度（🔴→🟡→🟢） |
 | `wiki lint` | 健康检查：矛盾、过时内容、孤儿页面、缺失交叉引用 |
-| `wiki graph` | 部署交互式知识图谱可视化（力导向图、分类着色、搜索过滤） |
+| `wiki graph` | 部署交互式知识图谱可视化（见下方预览） |
 | `wiki refresh` | 根据实际状态重新生成 WIKI.md 元信息 |
 | `wiki log` / `wiki list` | 聚合操作日志 / 一屏知识概览 |
 
