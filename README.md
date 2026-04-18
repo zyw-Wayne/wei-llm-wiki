@@ -1,6 +1,6 @@
 # wei-llm-wiki
 
-基于 [Karpathy LLM Wiki 方法论](https://karpathy.ai/)的 Claude Code Skill —— 将**任意来源的文章**预编译为持久、可查询的结构化知识库。
+基于 [Karpathy LLM Wiki 方法论](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)的 Claude Code Skill —— 将**任意来源的文章**预编译为持久、可查询的结构化知识库。
 
 > RAG 每次查询都从原文重新推导知识。LLM Wiki 不同 —— LLM **预先**把文章读完、理解完、整合进结构化 wiki，查询时读的是已编译的笔记，不是原文。每篇新文章入库都让整个 wiki 更丰富；每个好答案存回 wiki 都成为新的知识节点。**知识复利积累，不是每次重新推导。**
 
