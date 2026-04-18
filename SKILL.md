@@ -146,7 +146,7 @@ WIKI.md 有两种 `type`，通过文件开头的 `**类型**:` 字段区分：
    - 路径存在但无 WIKI.md → 询问是否初始化为新知识库（按标准初始化流程创建）
    - 路径存在且有 WIKI.md → 直接使用
 3. **写入持久化配置**：将路径（绝对路径或 `~` 开头的路径）写入本技能目录下的 `config.json` 文件（即 `SKILL.md` 同级目录），格式为 `{ "wikiRoot": "<路径>" }`
-4. **部署知识图谱**：将本技能自带的 `references/knowledge-graph.html` 复制到 `<wiki-root>/knowledge-graph.html`（与 `raw/`、`wiki/`、`WIKI.md` 同级，若已存在则覆盖更新）
+4. **部署知识图谱**：将本技能自带的 `references/knowledge-graph.html` 复制到根目录（按「知识图谱部署位置规则」确定目标路径，若已存在则覆盖更新）
 5. **输出确认**：显示当前设置的知识库根目录路径、知识库基本信息（文章数、页面数等），提示用户可用浏览器打开 `knowledge-graph.html` 查看知识图谱
 
 **后续效果**：写入 config.json 后，Wiki-Root 定位规则的第 2 步会检测该文件。之后在任意目录执行 `wiki ingest`、`wiki query` 等操作时，都会自动使用该路径作为知识库根目录，无需重复指定。
@@ -590,7 +590,7 @@ curl -sL -H "Referer: <文章URL>" -o "raw/<标题>/images/<序号>-<描述>.jpg
 
 **步骤：**
 1. **定位 wiki-root**：按「Wiki-Root 定位规则」确定路径
-2. **部署 HTML**：读取本技能自带的 `references/knowledge-graph.html`，复制到 `<wiki-root>/knowledge-graph.html`（与 `raw/`、`wiki/`、`WIKI.md` 同级，若已存在则覆盖更新）
+2. **部署 HTML**：读取本技能自带的 `references/knowledge-graph.html`，复制到根目录（按「知识图谱部署位置规则」确定目标路径，若已存在则覆盖更新）
 3. **输出确认**：告知用户文件路径，提示用浏览器打开后选择 `wiki/` 目录即可查看知识图谱
 
 **说明：**
@@ -598,6 +598,17 @@ curl -sL -H "Referer: <文章URL>" -o "raw/<标题>/images/<序号>-<描述>.jpg
 - 自动解析 `index.md` 中的分类结构和所有 wiki 页面的 `[[wikilink]]` 关系
 - 支持力导向图布局、分类着色、搜索过滤、节点详情、明暗主题切换
 - `wiki init` 时会自动执行此步骤，无需单独调用；`wiki graph` 可随时手动更新
+
+### 知识图谱部署位置规则
+
+`knowledge-graph.html` 应部署到所有知识库的共同根目录，确保一个 HTML 文件即可浏览所有内容：
+
+1. **wiki-root 为 collection 类型**：复制到该 collection 目录下（与 collection 的 `WIKI.md` 同级）
+2. **wiki-root 为 wiki 类型**：检查其父目录是否存在 collection 类型的 `WIKI.md`：
+   - **是** → 复制到该 collection 目录下
+   - **否** → 复制到该 wiki-root 目录下（与 `raw/`、`wiki/`、`WIKI.md` 同级）
+
+简而言之：有 collection 就放 collection 根目录，没有就放 wiki 根目录。
 
 ## 典型用法
 
