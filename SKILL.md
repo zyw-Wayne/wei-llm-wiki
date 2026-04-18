@@ -663,4 +663,4 @@ wiki query ~/my-wiki "你的问题"
 - `references/wiki-schema-template.md`：单知识库 WIKI.md 模板（type: wiki），初始化时复制并定制
 - `references/collection-schema-template.md`：多知识库集合 WIKI.md 模板（type: collection），自动注册子知识库
 - `references/page-format.md`：wiki 页面格式规范与示例（含 index.md、log.md 格式）
-- `references/knowledge-graph.html`：交互式知识图谱可视化模板，由 `wiki graph` 或 `wiki init` 部署到 `wiki/` 目录
+- `references/knowledge-graph.html`：交互式知识图谱可视化模板，由 `wiki graph` 或 `wiki init` 部署到知识库根目录（`<wiki-root>/knowledge-graph.html`）

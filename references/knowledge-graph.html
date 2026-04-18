@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AIGC 知识图谱</title>
+<title>Knowledge Graph</title>
 <style>
 :root {
   --bg: #0a0a0f; --sidebar-bg: #111118; --input-bg: #1a1a24; --border: #222;
@@ -61,28 +61,37 @@ canvas { display: block; }
 #welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 20px; }
 #welcome h1 { font-size: 28px; font-weight: 600; }
 #welcome p { color: var(--text-dim); font-size: 14px; max-width: 400px; text-align: center; line-height: 1.6; }
-#welcome button { background: #4ecdc4; color: #0a0a0f; border: none; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
-#welcome button:hover { opacity: 0.85; }
+#welcome button.pick-btn { background: #4ecdc4; color: #0a0a0f; border: none; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+#welcome button.pick-btn:hover { opacity: 0.85; }
 #welcome .hint { color: var(--text-faint); font-size: 11px; margin-top: 8px; }
+#lang-switch, #lang-switch-app { display: inline-flex; }
+#welcome #lang-switch { position: fixed; top: 16px; right: 16px; z-index: 30; }
+#lang-switch button, #lang-switch-app button { background: var(--btn-bg); border: 1px solid var(--btn-border); color: var(--text); padding: 5px 10px; cursor: pointer; font-size: 12px; transition: background 0.15s; }
+#lang-switch button:first-child, #lang-switch-app button:first-child { border-radius: 4px 0 0 4px; }
+#lang-switch button:last-child, #lang-switch-app button:last-child { border-radius: 0 4px 4px 0; border-left: none; }
+#lang-switch button.active, #lang-switch-app button.active { background: #4ecdc4; color: #0a0a0f; border-color: #4ecdc4; font-weight: 600; }
 </style>
 </head>
 <body>
 
 <div id="welcome">
-  <h1>AIGC 知识图谱</h1>
-  <p>从本地 wiki 目录动态读取 Markdown 文件，解析 [[wikilink]] 关系并可视化为交互式知识图谱。</p>
-  <button onclick="pickDirectory()">选择 wiki 目录</button>
-  <div class="hint">选择 AIGC/wiki 文件夹，需要 Chrome / Edge 浏览器</div>
+  <div id="lang-switch">
+    <button class="active" onclick="setLang('zh')">中文</button><button onclick="setLang('en')">EN</button>
+  </div>
+  <h1 data-i18n="title"></h1>
+  <p data-i18n="desc"></p>
+  <button class="pick-btn" onclick="pickDirectory()" data-i18n="pickBtn"></button>
+  <div class="hint" data-i18n="hint"></div>
 </div>
 
 <div id="app">
   <div id="sidebar">
     <div id="sidebar-header">
-      <h1>AIGC 知识图谱</h1>
+      <h1 data-i18n="title"></h1>
       <div class="stats" id="stats"></div>
       <div class="date" id="gen-date"></div>
     </div>
-    <div id="search-box"><input type="text" placeholder="搜索节点..." id="search-input"></div>
+    <div id="search-box"><input type="text" id="search-input" data-i18n-placeholder="searchPlaceholder"></div>
     <div id="category-list"></div>
     <div id="node-detail">
       <h3 id="detail-title"></h3>
@@ -95,22 +104,103 @@ canvas { display: block; }
     <canvas id="canvas"></canvas>
     <div id="tooltip"><div class="tt-title"></div><div class="tt-cat"></div></div>
     <div id="controls">
-      <button onclick="reloadData()">刷新数据</button>
-      <button onclick="resetZoom()">重置视图</button>
-      <button onclick="toggleLabels()">标签开/关</button>
-      <button onclick="toggleTheme()" id="theme-btn">日光模式</button>
+      <button onclick="reloadData()" data-i18n="reload"></button>
+      <button onclick="resetZoom()" data-i18n="resetView"></button>
+      <button onclick="toggleLabels()" data-i18n="toggleLabels"></button>
+      <button onclick="toggleTheme()" id="theme-btn" data-i18n="lightMode"></button>
+      <div id="lang-switch-app">
+        <button class="active" onclick="setLang('zh')">中文</button><button onclick="setLang('en')">EN</button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
+const i18n = {
+  zh: {
+    title: "知识图谱",
+    desc: "从本地 wiki 目录动态读取 Markdown 文件，解析 [[wikilink]] 关系并可视化为交互式知识图谱。",
+    pickBtn: "选择 wiki 目录",
+    hint: "选择知识库的 wiki 文件夹，需要 Chrome / Edge 浏览器",
+    searchPlaceholder: "搜索节点...",
+    reload: "刷新数据",
+    resetView: "重置视图",
+    toggleLabels: "标签开/关",
+    lightMode: "日光模式",
+    darkMode: "夜间模式",
+    stats: (n, e, c) => n + " 个节点 · " + e + " 条连接 · " + c + " 个分类",
+    genDate: (d) => "实时读取 · " + d,
+    outLinks: (n) => "<strong>引用 → (" + n + ")</strong><br>",
+    inLinks: (n) => "<strong>← 被引用 (" + n + ")</strong><br>",
+    ttCat: (cat, count) => cat + " · " + count + " 条连接",
+    noIndex: "未找到 index.md，请确认选择了 wiki 目录",
+    readError: "无法读取目录: ",
+    uncategorized: "未分类"
+  },
+  en: {
+    title: "Knowledge Graph",
+    desc: "Dynamically reads Markdown files from a local wiki directory, parses [[wikilink]] relations and visualizes them as an interactive knowledge graph.",
+    pickBtn: "Select wiki folder",
+    hint: "Select the wiki folder of your knowledge base. Requires Chrome / Edge.",
+    searchPlaceholder: "Search nodes...",
+    reload: "Reload",
+    resetView: "Reset View",
+    toggleLabels: "Labels On/Off",
+    lightMode: "Light Mode",
+    darkMode: "Dark Mode",
+    stats: (n, e, c) => n + " nodes · " + e + " edges · " + c + " categories",
+    genDate: (d) => "Live · " + d,
+    outLinks: (n) => "<strong>Links → (" + n + ")</strong><br>",
+    inLinks: (n) => "<strong>← Linked by (" + n + ")</strong><br>",
+    ttCat: (cat, count) => cat + " · " + count + " links",
+    noIndex: "index.md not found. Please select the wiki directory.",
+    readError: "Cannot read directory: ",
+    uncategorized: "Uncategorized"
+  }
+};
+
+let currentLang = "zh";
+
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll("#lang-switch button, #lang-switch-app button").forEach(btn => {
+    btn.classList.toggle("active", btn.textContent.trim() === (lang === "zh" ? "中文" : "EN"));
+  });
+  applyI18n();
+  if (lastStats) updateStatsText();
+}
+
+function applyI18n() {
+  const t = i18n[currentLang];
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.getAttribute("data-i18n");
+    if (typeof t[key] === "string") el.textContent = t[key];
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+    const key = el.getAttribute("data-i18n-placeholder");
+    if (typeof t[key] === "string") el.placeholder = t[key];
+  });
+  const themeBtn = document.getElementById("theme-btn");
+  if (themeBtn) themeBtn.textContent = isDark ? t.lightMode : t.darkMode;
+  document.title = t.title;
+}
+
+let lastStats = null;
+function updateStatsText() {
+  if (!lastStats) return;
+  const t = i18n[currentLang];
+  document.getElementById("stats").textContent = t.stats(lastStats.nodes, lastStats.edges, lastStats.cats);
+  document.getElementById("gen-date").textContent = t.genDate(new Date().toLocaleString(currentLang === "zh" ? "zh-CN" : "en-US"));
+}
+
 let dirHandle = null;
 let isDark = true;
 
 function toggleTheme() {
   isDark = !isDark;
   document.body.classList.toggle("light", !isDark);
-  document.getElementById("theme-btn").textContent = isDark ? "日光模式" : "夜间模式";
+  const t = i18n[currentLang];
+  document.getElementById("theme-btn").textContent = isDark ? t.lightMode : t.darkMode;
 }
 
 async function pickDirectory() {
@@ -118,7 +208,7 @@ async function pickDirectory() {
     dirHandle = await window.showDirectoryPicker({ mode: "read" });
     await loadAndRender();
   } catch (e) {
-    if (e.name !== "AbortError") alert("无法读取目录: " + e.message);
+    if (e.name !== "AbortError") alert(i18n[currentLang].readError + e.message);
   }
 }
 
@@ -167,8 +257,9 @@ function extractLinks(content) {
 }
 
 async function loadAndRender() {
+  const t = i18n[currentLang];
   const allFiles = await readAllMd(dirHandle);
-  if (!allFiles["index"]) { alert("未找到 index.md，请确认选择了 wiki 目录"); return; }
+  if (!allFiles["index"]) { alert(t.noIndex); return; }
 
   const categories = parseCategories(allFiles["index"]);
   const skip = new Set(["index", "log", "log-archive"]);
@@ -200,6 +291,7 @@ let simAlpha = 1.0;
 function renderGraph(categories, linkData) {
   categories_g = categories;
   linkData_g = linkData;
+  const t = i18n[currentLang];
 
   if (animId) cancelAnimationFrame(animId);
 
@@ -214,7 +306,7 @@ function renderGraph(categories, linkData) {
   catNames.forEach(cat => categories[cat].forEach(n => nodeSet.add(n)));
 
   nodes = Array.from(nodeSet).map(id => {
-    const c = nodeToCat[id] || { cat: "未分类", idx: catNames.length };
+    const c = nodeToCat[id] || { cat: t.uncategorized, idx: catNames.length };
     let linkCount = (linkData[id] || []).length;
     Object.keys(linkData).forEach(src => { if (linkData[src].includes(id)) linkCount++; });
     return { id, cat: c.cat, catIdx: c.idx, linkCount, x: 0, y: 0, vx: 0, vy: 0 };
@@ -234,10 +326,8 @@ function renderGraph(categories, linkData) {
     });
   });
 
-  document.getElementById("stats").textContent =
-    nodes.length + " 个节点 \u00B7 " + edges.length + " 条连接 \u00B7 " + catNames.length + " 个分类";
-  document.getElementById("gen-date").textContent =
-    "实时读取 \u00B7 " + new Date().toLocaleString("zh-CN");
+  lastStats = { nodes: nodes.length, edges: edges.length, cats: catNames.length };
+  updateStatsText();
 
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
@@ -380,7 +470,6 @@ function renderGraph(categories, linkData) {
     });
   }
 
-  // Run simulation to completion synchronously before first paint
   let alpha = 1.0;
   for (let i = 0; i < 300; i++) { simulateStep(alpha); alpha *= 0.97; }
   simAlpha = 0;
@@ -401,6 +490,7 @@ function renderGraph(categories, linkData) {
   }
 
   function selectNode(n) {
+    const t = i18n[currentLang];
     if (selectedNode === n) { selectedNode = null; document.getElementById("node-detail").style.display = "none"; return; }
     selectedNode = n; activeCategory = null;
     document.querySelectorAll(".cat-item").forEach(el => el.classList.remove("active"));
@@ -412,10 +502,10 @@ function renderGraph(categories, linkData) {
     const inLinks = [];
     Object.keys(linkData_g).forEach(src => { if (linkData_g[src].includes(n.id) && src !== n.id) inLinks.push(src); });
     const outEl = document.getElementById("detail-outlinks");
-    outEl.innerHTML = "<strong>引用 \u2192 (" + outLinks.length + ")</strong><br>";
+    outEl.innerHTML = t.outLinks(outLinks.length);
     outLinks.forEach(l => { const a = document.createElement("a"); a.textContent = l; a.onclick = () => { if (nodeMap[l]) selectNode(nodeMap[l]); }; outEl.appendChild(a); });
     const inEl = document.getElementById("detail-inlinks");
-    inEl.innerHTML = "<strong>\u2190 被引用 (" + inLinks.length + ")</strong><br>";
+    inEl.innerHTML = t.inLinks(inLinks.length);
     inLinks.forEach(l => { const a = document.createElement("a"); a.textContent = l; a.onclick = () => { if (nodeMap[l]) selectNode(nodeMap[l]); }; inEl.appendChild(a); });
   }
 
@@ -430,7 +520,8 @@ function renderGraph(categories, linkData) {
       const n = findNode(e.offsetX, e.offsetY); hoveredNode = n;
       canvas.style.cursor = n ? "pointer" : "grab";
       const tt = document.getElementById("tooltip");
-      if (n) { tt.style.display = "block"; tt.style.left = (e.offsetX + 14) + "px"; tt.style.top = (e.offsetY - 10) + "px"; tt.querySelector(".tt-title").textContent = n.id; tt.querySelector(".tt-cat").textContent = n.cat + " \u00B7 " + n.linkCount + " 条连接"; }
+      const t = i18n[currentLang];
+      if (n) { tt.style.display = "block"; tt.style.left = (e.offsetX + 14) + "px"; tt.style.top = (e.offsetY - 10) + "px"; tt.querySelector(".tt-title").textContent = n.id; tt.querySelector(".tt-cat").textContent = t.ttCat(n.cat, n.linkCount); }
       else { tt.style.display = "none"; }
     }
   };
@@ -467,6 +558,8 @@ function renderGraph(categories, linkData) {
   window.resetZoom = () => { fitToViewport(); };
   window.toggleLabels = () => { showLabels = !showLabels; };
 }
+
+applyI18n();
 </script>
 </body>
 </html>
