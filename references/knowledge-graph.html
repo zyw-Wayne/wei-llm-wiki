@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIGC 知识图谱</title>
+<style>
+:root {
+  --bg: #0a0a0f; --sidebar-bg: #111118; --input-bg: #1a1a24; --border: #222;
+  --text: #e0e0e0; --text-dim: #888; --text-faint: #555; --hover-bg: #1a1a24;
+  --active-bg: #1a1a2e; --btn-bg: #1a1a24; --btn-hover: #252538; --btn-border: #333;
+  --tag-bg: #1a1a24; --tag-hover: #252538; --tooltip-bg: #1a1a24;
+  --edge-color: rgba(255,255,255,0.12); --edge-dim: rgba(255,255,255,0.02);
+  --node-dim: rgba(60,60,70,0.3); --label-color: rgba(224,224,224,VAR_ALPHA);
+  --canvas-bg: #0a0a0f;
+}
+body.light {
+  --bg: #f5f5f7; --sidebar-bg: #ffffff; --input-bg: #f0f0f4; --border: #e0e0e0;
+  --text: #1a1a2e; --text-dim: #666; --text-faint: #999; --hover-bg: #f0f0f4;
+  --active-bg: #e8e8f0; --btn-bg: #f0f0f4; --btn-hover: #e0e0ea; --btn-border: #d0d0d8;
+  --tag-bg: #eeeef4; --tag-hover: #e0e0ea; --tooltip-bg: #ffffff;
+  --edge-color: rgba(0,0,0,0.1); --edge-dim: rgba(0,0,0,0.02);
+  --node-dim: rgba(180,180,190,0.4);
+  --canvas-bg: #f5f5f7;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; overflow: hidden; height: 100vh; transition: background 0.3s, color 0.3s; }
+#app { display: none; height: 100vh; }
+#app.visible { display: flex; }
+#sidebar { width: 320px; min-width: 320px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; transition: background 0.3s, border-color 0.3s; }
+#sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); }
+#sidebar-header h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+#sidebar-header .stats { font-size: 12px; color: var(--text-dim); }
+#sidebar-header .date { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+#search-box { margin: 12px 20px; position: relative; }
+#search-box input { width: 100%; padding: 8px 12px 8px 32px; background: var(--input-bg); border: 1px solid var(--btn-border); border-radius: 6px; color: var(--text); font-size: 13px; outline: none; transition: background 0.3s, border-color 0.3s, color 0.3s; }
+#search-box input:focus { border-color: #556; }
+#search-box::before { content: "\1F50D"; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; }
+#category-list { flex: 1; overflow-y: auto; padding: 8px 12px; }
+.cat-item { display: flex; align-items: center; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-bottom: 2px; transition: background 0.15s; }
+.cat-item:hover { background: var(--hover-bg); }
+.cat-item.active { background: var(--active-bg); }
+.cat-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
+.cat-count { margin-left: auto; color: var(--text-faint); font-size: 11px; }
+#node-detail { padding: 16px 20px; border-top: 1px solid var(--border); max-height: 280px; overflow-y: auto; display: none; }
+#node-detail h3 { font-size: 14px; margin-bottom: 8px; }
+#node-detail .detail-cat { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+#node-detail .detail-links { font-size: 12px; }
+#node-detail .detail-links a { color: #7a9ec2; cursor: pointer; text-decoration: none; display: inline-block; margin: 2px 4px 2px 0; padding: 2px 6px; background: var(--tag-bg); border-radius: 3px; transition: background 0.15s; }
+#node-detail .detail-links a:hover { background: var(--tag-hover); }
+#graph-container { flex: 1; position: relative; }
+canvas { display: block; }
+#tooltip { position: absolute; background: var(--tooltip-bg); border: 1px solid var(--btn-border); border-radius: 6px; padding: 8px 12px; font-size: 12px; pointer-events: none; display: none; z-index: 100; max-width: 280px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: background 0.3s, border-color 0.3s; }
+#tooltip .tt-title { font-weight: 600; margin-bottom: 4px; }
+#tooltip .tt-cat { color: var(--text-dim); font-size: 11px; }
+#controls { position: absolute; top: 16px; right: 16px; display: flex; gap: 8px; z-index: 20; }
+#controls button { background: var(--btn-bg); border: 1px solid var(--btn-border); color: var(--text); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: background 0.15s, border-color 0.3s, color 0.3s; }
+#controls button:hover { background: var(--btn-hover); }
+#category-list::-webkit-scrollbar, #node-detail::-webkit-scrollbar { width: 4px; }
+#category-list::-webkit-scrollbar-thumb, #node-detail::-webkit-scrollbar-thumb { background: var(--btn-border); border-radius: 2px; }
+#welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 20px; }
+#welcome h1 { font-size: 28px; font-weight: 600; }
+#welcome p { color: var(--text-dim); font-size: 14px; max-width: 400px; text-align: center; line-height: 1.6; }
+#welcome button { background: #4ecdc4; color: #0a0a0f; border: none; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+#welcome button:hover { opacity: 0.85; }
+#welcome .hint { color: var(--text-faint); font-size: 11px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div id="welcome">
+  <h1>AIGC 知识图谱</h1>
+  <p>从本地 wiki 目录动态读取 Markdown 文件，解析 [[wikilink]] 关系并可视化为交互式知识图谱。</p>
+  <button onclick="pickDirectory()">选择 wiki 目录</button>
+  <div class="hint">选择 AIGC/wiki 文件夹，需要 Chrome / Edge 浏览器</div>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h1>AIGC 知识图谱</h1>
+      <div class="stats" id="stats"></div>
+      <div class="date" id="gen-date"></div>
+    </div>
+    <div id="search-box"><input type="text" placeholder="搜索节点..." id="search-input"></div>
+    <div id="category-list"></div>
+    <div id="node-detail">
+      <h3 id="detail-title"></h3>
+      <div class="detail-cat" id="detail-cat"></div>
+      <div class="detail-links" id="detail-outlinks"></div>
+      <div class="detail-links" id="detail-inlinks" style="margin-top:8px"></div>
+    </div>
+  </div>
+  <div id="graph-container">
+    <canvas id="canvas"></canvas>
+    <div id="tooltip"><div class="tt-title"></div><div class="tt-cat"></div></div>
+    <div id="controls">
+      <button onclick="reloadData()">刷新数据</button>
+      <button onclick="resetZoom()">重置视图</button>
+      <button onclick="toggleLabels()">标签开/关</button>
+      <button onclick="toggleTheme()" id="theme-btn">日光模式</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let dirHandle = null;
+let isDark = true;
+
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.classList.toggle("light", !isDark);
+  document.getElementById("theme-btn").textContent = isDark ? "日光模式" : "夜间模式";
+}
+
+async function pickDirectory() {
+  try {
+    dirHandle = await window.showDirectoryPicker({ mode: "read" });
+    await loadAndRender();
+  } catch (e) {
+    if (e.name !== "AbortError") alert("无法读取目录: " + e.message);
+  }
+}
+
+async function reloadData() {
+  if (dirHandle) await loadAndRender();
+}
+
+async function readAllMd(handle) {
+  const files = {};
+  for await (const [name, entry] of handle) {
+    if (entry.kind === "file" && name.endsWith(".md")) {
+      const file = await entry.getFile();
+      files[name.replace(/\.md$/, "")] = await file.text();
+    }
+  }
+  return files;
+}
+
+function parseCategories(indexContent) {
+  const categories = {};
+  let currentCat = null;
+  for (const line of indexContent.split("\n")) {
+    const headMatch = line.match(/^##\s+(.+)/);
+    if (headMatch) {
+      currentCat = headMatch[1].trim();
+      if (!categories[currentCat]) categories[currentCat] = [];
+      continue;
+    }
+    if (currentCat) {
+      const linkMatch = line.match(/\[\[([^\]]+)\]\]/);
+      if (linkMatch) categories[currentCat].push(linkMatch[1].replace(/#.*$/, ""));
+    }
+  }
+  return categories;
+}
+
+function extractLinks(content) {
+  const links = new Set();
+  const re = /\[\[([^\]]+)\]\]/g;
+  let m;
+  while ((m = re.exec(content))) {
+    const target = m[1].replace(/#.*$/, "").trim();
+    if (target) links.add(target);
+  }
+  return [...links];
+}
+
+async function loadAndRender() {
+  const allFiles = await readAllMd(dirHandle);
+  if (!allFiles["index"]) { alert("未找到 index.md，请确认选择了 wiki 目录"); return; }
+
+  const categories = parseCategories(allFiles["index"]);
+  const skip = new Set(["index", "log", "log-archive"]);
+  const linkData = {};
+
+  for (const [name, content] of Object.entries(allFiles)) {
+    if (skip.has(name)) continue;
+    linkData[name] = extractLinks(content).filter(l => l !== name);
+  }
+
+  document.getElementById("welcome").style.display = "none";
+  document.getElementById("app").classList.add("visible");
+
+  renderGraph(categories, linkData);
+}
+
+const catColors = [
+  "#4ecdc4","#ff6b6b","#45b7d1","#96ceb4","#feca57",
+  "#ff9ff3","#54a0ff","#5f27cd","#01a3a4","#f368e0",
+  "#ee5a24","#009432","#0652DD","#FDA7DF","#9980FA",
+  "#6ab04c","#e056fd","#22a6b3","#f9ca24","#30336b"
+];
+
+let nodes, nodeMap, edges, catNames, nodeToCat, categories_g, linkData_g;
+let transform, showLabels, selectedNode, hoveredNode, activeCategory, searchTerm;
+let dragging, panning, panStart, W, H, dpr, animId;
+let simAlpha = 1.0;
+
+function renderGraph(categories, linkData) {
+  categories_g = categories;
+  linkData_g = linkData;
+
+  if (animId) cancelAnimationFrame(animId);
+
+  nodeToCat = {};
+  catNames = Object.keys(categories);
+  catNames.forEach((cat, i) => {
+    categories[cat].forEach(n => { nodeToCat[n] = { cat, idx: i }; });
+  });
+
+  const nodeSet = new Set();
+  Object.keys(linkData).forEach(n => { nodeSet.add(n); linkData[n].forEach(t => nodeSet.add(t)); });
+  catNames.forEach(cat => categories[cat].forEach(n => nodeSet.add(n)));
+
+  nodes = Array.from(nodeSet).map(id => {
+    const c = nodeToCat[id] || { cat: "未分类", idx: catNames.length };
+    let linkCount = (linkData[id] || []).length;
+    Object.keys(linkData).forEach(src => { if (linkData[src].includes(id)) linkCount++; });
+    return { id, cat: c.cat, catIdx: c.idx, linkCount, x: 0, y: 0, vx: 0, vy: 0 };
+  });
+
+  nodeMap = {};
+  nodes.forEach(n => { nodeMap[n.id] = n; });
+
+  edges = [];
+  const edgeSet = new Set();
+  Object.keys(linkData).forEach(src => {
+    linkData[src].forEach(tgt => {
+      if (nodeMap[tgt]) {
+        const key = [src, tgt].sort().join("|||");
+        if (!edgeSet.has(key)) { edgeSet.add(key); edges.push({ source: nodeMap[src], target: nodeMap[tgt] }); }
+      }
+    });
+  });
+
+  document.getElementById("stats").textContent =
+    nodes.length + " 个节点 \u00B7 " + edges.length + " 条连接 \u00B7 " + catNames.length + " 个分类";
+  document.getElementById("gen-date").textContent =
+    "实时读取 \u00B7 " + new Date().toLocaleString("zh-CN");
+
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  const container = document.getElementById("graph-container");
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    W = container.clientWidth; H = container.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.onresize = () => { resize(); draw(); };
+
+  const catCenters = {};
+  catNames.forEach((cat, i) => {
+    const a = (i / catNames.length) * Math.PI * 2;
+    catCenters[cat] = { x: Math.cos(a) * 300, y: Math.sin(a) * 250 };
+  });
+
+  nodes.forEach(n => {
+    const cc = catCenters[n.cat] || { x: 0, y: 0 };
+    const a = Math.random() * Math.PI * 2, r = 30 + Math.random() * 80;
+    n.x = cc.x + Math.cos(a) * r; n.y = cc.y + Math.sin(a) * r;
+  });
+
+  function fitToViewport() {
+    if (!nodes.length) return;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    nodes.forEach(n => {
+      minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
+      minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
+    });
+    const pad = 60;
+    const gw = maxX - minX + pad * 2, gh = maxY - minY + pad * 2;
+    const scale = Math.min(W / gw, H / gh, 2.5);
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    transform.k = scale;
+    transform.x = W / 2 - cx * scale;
+    transform.y = H / 2 - cy * scale;
+  }
+
+  transform = { x: 0, y: 0, k: 1 };
+  showLabels = true; selectedNode = null; hoveredNode = null; activeCategory = null; searchTerm = "";
+  dragging = null; panning = false; panStart = { x: 0, y: 0 };
+  simAlpha = 1.0;
+
+  function screenToWorld(sx, sy) { return { x: (sx - transform.x) / transform.k, y: (sy - transform.y) / transform.k }; }
+  function nodeRadius(n) { return Math.max(4, Math.min(16, 3 + n.linkCount * 0.8)); }
+  function getNodeColor(n) { return catColors[n.catIdx % catColors.length] || "#888"; }
+
+  function isHighlighted(n) {
+    if (searchTerm) return n.id.toLowerCase().includes(searchTerm);
+    if (activeCategory !== null) return n.cat === catNames[activeCategory];
+    if (selectedNode) {
+      if (n === selectedNode) return true;
+      const out = linkData_g[selectedNode.id] || [];
+      if (out.includes(n.id)) return true;
+      for (const src in linkData_g) { if (src === n.id && linkData_g[src].includes(selectedNode.id)) return true; }
+      return false;
+    }
+    return true;
+  }
+
+  function draw() {
+    const isLight = document.body.classList.contains("light");
+    const bgColor = isLight ? "#f5f5f7" : "#0a0a0f";
+    const edgeHi = isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.12)";
+    const edgeLo = isLight ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.02)";
+    const labelBase = isLight ? "50,50,60" : "224,224,224";
+    const dimFill = isLight ? "rgba(180,180,190,0.4)" : "rgba(60,60,70,0.3)";
+
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    ctx.translate(transform.x, transform.y);
+    ctx.scale(transform.k, transform.k);
+    const anyFilter = searchTerm || activeCategory !== null || selectedNode;
+
+    edges.forEach(e => {
+      const sH = !anyFilter || (isHighlighted(e.source) && isHighlighted(e.target));
+      ctx.beginPath(); ctx.moveTo(e.source.x, e.source.y); ctx.lineTo(e.target.x, e.target.y);
+      ctx.strokeStyle = sH ? edgeHi : edgeLo;
+      ctx.lineWidth = sH ? 0.8 : 0.3; ctx.stroke();
+    });
+
+    nodes.forEach(n => {
+      const r = nodeRadius(n), h = isHighlighted(n), color = getNodeColor(n);
+      ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      if (anyFilter && !h) { ctx.fillStyle = dimFill; }
+      else if (n === selectedNode) { ctx.fillStyle = isLight ? "#222" : "#fff"; ctx.shadowColor = color; ctx.shadowBlur = 12; }
+      else if (n === hoveredNode) { ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 8; }
+      else { ctx.fillStyle = color; ctx.globalAlpha = anyFilter && !h ? 0.15 : 0.85; }
+      ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    });
+
+    if (showLabels && transform.k > 0.6) {
+      const fontSize = Math.max(8, Math.min(12, 10 / transform.k));
+      ctx.font = fontSize + "px -apple-system, system-ui, sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      nodes.forEach(n => {
+        const h = isHighlighted(n);
+        if (anyFilter && !h) return;
+        const r = nodeRadius(n);
+        const alpha = n === selectedNode || n === hoveredNode ? 1 : (transform.k > 1.2 ? 0.9 : (n.linkCount > 5 ? 0.8 : 0.5));
+        if (transform.k < 0.9 && n.linkCount < 4 && n !== selectedNode && n !== hoveredNode) return;
+        ctx.fillStyle = "rgba(" + labelBase + "," + alpha + ")";
+        ctx.fillText(n.id, n.x, n.y + r + 3);
+      });
+    }
+    ctx.restore();
+  }
+
+  function simulateStep(alpha) {
+    const repulsion = -500, attraction = 0.006, linkDist = 150, damping = 0.6;
+    nodes.forEach(a => {
+      a.vx -= a.x * 0.0003; a.vy -= a.y * 0.0003;
+      nodes.forEach(b => {
+        if (a === b) return;
+        let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
+        if (d2 < 1) d2 = 1;
+        let d = Math.sqrt(d2), f = repulsion / d2;
+        a.vx += dx / d * f * alpha; a.vy += dy / d * f * alpha;
+      });
+    });
+    edges.forEach(e => {
+      let dx = e.target.x - e.source.x, dy = e.target.y - e.source.y;
+      let d = Math.sqrt(dx * dx + dy * dy) || 1, f = (d - linkDist) * attraction * alpha;
+      e.source.vx += dx / d * f; e.source.vy += dy / d * f;
+      e.target.vx -= dx / d * f; e.target.vy -= dy / d * f;
+    });
+    nodes.forEach(n => {
+      const cc = catCenters[n.cat];
+      if (cc) { n.vx += (cc.x - n.x) * 0.001 * alpha; n.vy += (cc.y - n.y) * 0.001 * alpha; }
+    });
+    nodes.forEach(n => {
+      if (n === dragging) return;
+      n.vx *= damping; n.vy *= damping; n.x += n.vx; n.y += n.vy;
+    });
+  }
+
+  // Run simulation to completion synchronously before first paint
+  let alpha = 1.0;
+  for (let i = 0; i < 300; i++) { simulateStep(alpha); alpha *= 0.97; }
+  simAlpha = 0;
+  fitToViewport();
+
+  function tick() {
+    if (simAlpha > 0.001) { simulateStep(simAlpha); simAlpha *= 0.97; }
+    draw();
+    animId = requestAnimationFrame(tick);
+  }
+  tick();
+
+  function findNode(sx, sy) {
+    const w = screenToWorld(sx, sy);
+    let best = null, bestD = Infinity;
+    nodes.forEach(n => { const d = Math.hypot(n.x - w.x, n.y - w.y), r = nodeRadius(n) + 4; if (d < r && d < bestD) { best = n; bestD = d; } });
+    return best;
+  }
+
+  function selectNode(n) {
+    if (selectedNode === n) { selectedNode = null; document.getElementById("node-detail").style.display = "none"; return; }
+    selectedNode = n; activeCategory = null;
+    document.querySelectorAll(".cat-item").forEach(el => el.classList.remove("active"));
+    const detail = document.getElementById("node-detail");
+    detail.style.display = "block";
+    document.getElementById("detail-title").textContent = n.id;
+    document.getElementById("detail-cat").textContent = n.cat;
+    const outLinks = linkData_g[n.id] || [];
+    const inLinks = [];
+    Object.keys(linkData_g).forEach(src => { if (linkData_g[src].includes(n.id) && src !== n.id) inLinks.push(src); });
+    const outEl = document.getElementById("detail-outlinks");
+    outEl.innerHTML = "<strong>引用 \u2192 (" + outLinks.length + ")</strong><br>";
+    outLinks.forEach(l => { const a = document.createElement("a"); a.textContent = l; a.onclick = () => { if (nodeMap[l]) selectNode(nodeMap[l]); }; outEl.appendChild(a); });
+    const inEl = document.getElementById("detail-inlinks");
+    inEl.innerHTML = "<strong>\u2190 被引用 (" + inLinks.length + ")</strong><br>";
+    inLinks.forEach(l => { const a = document.createElement("a"); a.textContent = l; a.onclick = () => { if (nodeMap[l]) selectNode(nodeMap[l]); }; inEl.appendChild(a); });
+  }
+
+  canvas.onmousedown = e => {
+    const n = findNode(e.offsetX, e.offsetY);
+    if (n) { dragging = n; simAlpha = 0.1; } else { panning = true; panStart = { x: e.clientX - transform.x, y: e.clientY - transform.y }; }
+  };
+  canvas.onmousemove = e => {
+    if (dragging) { const w = screenToWorld(e.offsetX, e.offsetY); dragging.x = w.x; dragging.y = w.y; dragging.vx = 0; dragging.vy = 0; }
+    else if (panning) { transform.x = e.clientX - panStart.x; transform.y = e.clientY - panStart.y; }
+    else {
+      const n = findNode(e.offsetX, e.offsetY); hoveredNode = n;
+      canvas.style.cursor = n ? "pointer" : "grab";
+      const tt = document.getElementById("tooltip");
+      if (n) { tt.style.display = "block"; tt.style.left = (e.offsetX + 14) + "px"; tt.style.top = (e.offsetY - 10) + "px"; tt.querySelector(".tt-title").textContent = n.id; tt.querySelector(".tt-cat").textContent = n.cat + " \u00B7 " + n.linkCount + " 条连接"; }
+      else { tt.style.display = "none"; }
+    }
+  };
+  canvas.onmouseup = e => {
+    if (dragging && !panning) { const n = findNode(e.offsetX, e.offsetY); if (n === dragging) selectNode(n); }
+    dragging = null; panning = false;
+  };
+  canvas.onwheel = e => {
+    e.preventDefault();
+    const scale = e.deltaY > 0 ? 0.92 : 1.08, mx = e.offsetX, my = e.offsetY;
+    transform.x = mx - (mx - transform.x) * scale; transform.y = my - (my - transform.y) * scale;
+    transform.k *= scale; transform.k = Math.max(0.15, Math.min(5, transform.k));
+  };
+
+  const catList = document.getElementById("category-list");
+  catList.innerHTML = "";
+  catNames.forEach((cat, i) => {
+    const div = document.createElement("div"); div.className = "cat-item";
+    div.innerHTML = '<span class="cat-dot" style="background:' + catColors[i % catColors.length] + '"></span>' + cat + '<span class="cat-count">' + categories[cat].length + '</span>';
+    div.onclick = () => {
+      if (activeCategory === i) { activeCategory = null; div.classList.remove("active"); }
+      else { document.querySelectorAll(".cat-item").forEach(el => el.classList.remove("active")); activeCategory = i; div.classList.add("active"); }
+      selectedNode = null; document.getElementById("node-detail").style.display = "none";
+    };
+    catList.appendChild(div);
+  });
+
+  document.getElementById("search-input").value = "";
+  document.getElementById("search-input").oninput = e => {
+    searchTerm = e.target.value.toLowerCase();
+    if (searchTerm) { activeCategory = null; selectedNode = null; document.querySelectorAll(".cat-item").forEach(el => el.classList.remove("active")); document.getElementById("node-detail").style.display = "none"; }
+  };
+
+  window.resetZoom = () => { fitToViewport(); };
+  window.toggleLabels = () => { showLabels = !showLabels; };
+}
+</script>
+</body>
+</html>
