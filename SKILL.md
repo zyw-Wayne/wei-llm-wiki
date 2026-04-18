@@ -1,5 +1,5 @@
 ---
-name: llm-wiki
+name: wei-llm-wiki
 description: >
   当用户要求把文章存进知识库、查询知识库、或维护知识库时使用。
   触发词：wiki init、wiki ingest、wiki query、wiki lint、wiki refresh、wiki log、wiki list、wiki evolve、wiki graph、
