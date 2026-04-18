@@ -199,6 +199,12 @@ wiki evolve --all         # 全量评估所有分类
 
 ---
 
+## Real-World Example / 实际案例
+
+Check out a live knowledge base built with this skill:
+
+**[llm-wiki-kb](https://github.com/zyw-Wayne/llm-wiki-kb)** — 使用 wei-llm-wiki 构建的实际知识库，包含 AI 编程工具、Agent 开发、Prompt 工程等主题的结构化知识。可以直观感受 LLM Wiki 的编译效果和知识积累过程。
+
 ## License
 
 MIT
