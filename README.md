@@ -5,7 +5,7 @@
 ## 安装
 
 ```bash
-npx @anthropic-ai/skills add https://github.com/zyw-Wayne/wei-llm-wiki
+npx skills add https://github.com/zyw-Wayne/wei-llm-wiki
 ```
 
 ## 配置
